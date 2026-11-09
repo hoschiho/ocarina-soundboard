@@ -1,0 +1,598 @@
+<title>Ocarina Songbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1419">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Music&text=%F0%9D%84%9E&display=swap">
+<style>
+/* Layout: a single 16:9 stage — two arcs of song circles over a parchment staff, like the in-game songbook. Dark night look on purpose (single theme). */
+:root {
+  --night: #0b1419;
+  --night-2: #18292f;
+  --ink: #e9e2cf;
+  --muted: #93a6aa;
+  --cream: #ecdcb5;
+  --parch: #e6d6ae;
+  --parch-ink: #4a3a24;
+  --glow: #d6ecff;
+  --disc: rgba(6, 10, 13, .82);
+  --display: "IM Fell English SC", "Iowan Old Style", Georgia, serif;
+  --body: "Alegreya Sans", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 38%, #1f3a40 0%, transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 100%, #10221d 0%, transparent 70%),
+    var(--night);
+  color: var(--ink);
+  font-family: var(--body);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 6px 8px;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Top bar */
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 34px; position: relative; z-index: 5;
+}
+.brand { font-family: var(--display); font-size: 17px; letter-spacing: .04em; color: var(--cream); opacity: .85; white-space: nowrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.chip {
+  font: 500 13px/1 var(--body); color: var(--ink);
+  background: rgba(233, 226, 207, .08); border: 1px solid rgba(233, 226, 207, .18);
+  border-radius: 999px; padding: 7px 12px; cursor: pointer;
+}
+.chip b { font-weight: 700; color: var(--cream); }
+.chip:focus-visible, .song:focus-visible, .btn:focus-visible, .key:focus-visible, .edit-badge:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
+
+.help {
+  position: absolute; top: 40px; right: 0; width: min(360px, 100%);
+  background: #13232a; border: 1px solid rgba(233, 226, 207, .2); border-radius: 10px;
+  padding: 14px 16px; font-size: 14px; line-height: 1.45; box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+.help h2 { font: 400 16px var(--display); margin: 0 0 6px; color: var(--cream); letter-spacing: .03em; }
+.help ol { margin: 0 0 8px; padding-left: 18px; }
+.help p { margin: 0; color: var(--muted); }
+.help kbd { font: 700 12px var(--body); background: rgba(233,226,207,.12); border-radius: 4px; padding: 1px 5px; }
+
+.rotate { display: none; text-align: center; font-size: 14px; color: var(--muted); padding: 6px 0 0; }
+@media (orientation: portrait) and (max-width: 760px) { .rotate { display: block; } }
+
+/* Stage */
+.wrap { container-type: size; display: grid; place-items: center; min-height: 0; }
+.stage {
+  position: relative;
+  width: min(100cqw, 100cqh * 16 / 9);
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+}
+
+.song {
+  position: absolute; width: 9.6%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  background: radial-gradient(circle at 50% 40%, rgba(30, 40, 46, .85), var(--disc) 70%);
+  box-shadow: inset 0 0 1.2cqw rgba(0,0,0,.8), 0 .4cqw 1.2cqw rgba(0,0,0,.45);
+  display: grid; place-items: center;
+  transition: box-shadow .2s ease, transform .15s ease;
+  touch-action: manipulation;
+}
+.song svg { width: 74%; height: 74%; overflow: visible; filter: drop-shadow(0 .2cqw .3cqw rgba(0,0,0,.6)); }
+.song img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; filter: drop-shadow(0 .2cqw .3cqw rgba(0,0,0,.6)); }
+.song.is-empty img { opacity: .45; }
+.song:active { transform: translate(-50%, -50%) scale(.95); }
+.song.is-active {
+  box-shadow: 0 0 0 .38cqw #fff, 0 0 1.6cqw .5cqw rgba(214, 236, 255, .75), inset 0 0 1.2cqw rgba(0,0,0,.8);
+}
+.song.is-playing { animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse {
+  50% { box-shadow: 0 0 0 .38cqw #fff, 0 0 2.6cqw .9cqw rgba(214, 236, 255, .9), inset 0 0 1.2cqw rgba(0,0,0,.8); }
+}
+.song.is-dim { opacity: .55; }
+.song.is-empty svg { opacity: .45; }
+.edit-badge {
+  position: absolute; width: 3.4%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; border: .2cqw solid var(--night); background: var(--cream); color: var(--night);
+  display: grid; place-items: center; padding: 0; cursor: pointer; z-index: 2;
+}
+.edit-badge svg { width: 60%; height: 60%; }
+
+.parchment {
+  position: absolute; left: 8%; width: 84%; top: 56%; aspect-ratio: 1000 / 275;
+  filter: drop-shadow(0 .6cqw 1.2cqw rgba(0,0,0,.55));
+}
+.parchment svg { width: 100%; height: 100%; display: block; }
+.title-text { font-family: var(--display); fill: var(--parch-ink); letter-spacing: .03em; }
+.hint-text { font-family: var(--body); fill: #7d6a4b; }
+.note-pop { transform-box: fill-box; transform-origin: center; animation: pop .22s cubic-bezier(.3,1.6,.6,1) both; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Scarecrow editor */
+.scrim {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+  background: rgba(3, 7, 9, .72); padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet {
+  width: min(560px, 100%); max-height: 100%; overflow: auto;
+  background: linear-gradient(#ecdfbb, #dccb9f); color: var(--parch-ink);
+  border-radius: 6px; padding: 16px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  outline: 3px double #8a6f48; outline-offset: -8px;
+}
+.sheet h2 { font: 400 22px var(--display); margin: 0 0 2px; text-wrap: balance; }
+.sheet p { margin: 0 0 12px; font-size: 14px; line-height: 1.4; }
+.slots { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 12px; }
+.slot {
+  aspect-ratio: 1; border-radius: 6px; border: 1.5px dashed #a58c63; display: grid; place-items: center;
+  font: 700 clamp(13px, 3.4vw, 18px) var(--body);
+}
+.slot.filled { border-style: solid; background: rgba(74, 58, 36, .08); }
+.keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+.key {
+  border: 0; border-radius: 10px; padding: 8px 4px; cursor: pointer; color: #f3ead2;
+  font: 700 18px/1.1 var(--body); display: grid; gap: 2px; justify-items: center;
+}
+.key small { font-weight: 400; font-size: 11px; opacity: .8; }
+.key[data-shape="pill"] { background: #3d3a35; }
+.key[data-shape="round"] { background: #27395f; }
+.key:active { transform: scale(.96); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row .spacer { flex: 1; }
+.btn {
+  border: 1.5px solid #8a6f48; background: transparent; color: var(--parch-ink); border-radius: 8px;
+  padding: 8px 12px; font: 500 14px var(--body); cursor: pointer;
+}
+.btn.primary { background: var(--parch-ink); color: #f3ead2; border-color: var(--parch-ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.err { color: #9a2a14; font-size: 13px; min-height: 1.3em; margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .song.is-playing { animation: none; }
+  .note-pop { animation: none; }
+  .song { transition: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="speckle" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.6 0 0 0 -1.25" result="dots"/>
+      <feComposite in="dots" in2="SourceGraphic" operator="in" result="spk"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="spk"/></feMerge>
+    </filter>
+    <filter id="paper" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="4" seed="3" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 .45  0 0 0 0 .34  0 0 0 0 .18  0 0 0 .55 0" result="tint"/>
+      <feComposite in="tint" in2="SourceGraphic" operator="in" result="tex"/>
+      <feBlend in="SourceGraphic" in2="tex" mode="multiply"/>
+    </filter>
+    <radialGradient id="parchGrad" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#efe3c2"/>
+      <stop offset=".75" stop-color="#e2d0a3"/>
+      <stop offset="1" stop-color="#cdb78a"/>
+    </radialGradient>
+  </defs>
+</svg>
+
+<header class="bar">
+  <div class="brand">Ocarina Songbook</div>
+  <div class="chips">
+    <button class="chip" id="speedChip" type="button">Speed: <b>Normal</b></button>
+    <button class="chip" id="toneChip" type="button">Tone: <b>Ocarina</b></button>
+    <button class="chip" id="helpChip" type="button" aria-expanded="false" aria-controls="help">How to use</button>
+  </div>
+  <div class="help" id="help" hidden>
+    <h2>Playing into the Switch 2 mic</h2>
+    <ol>
+      <li>In the game, open <kbd>+</kbd> → System → Options and set <b>Ocarina Mic Input</b> to <b>Instruments</b>.</li>
+      <li>Take out the ocarina and hold your phone near the console.</li>
+      <li>Tap a song. Tap it again to stop.</li>
+      <li>Not recognised? Try <b>Speed: Slow</b> or <b>Tone: Pure</b>, and check with Practice Mode (<kbd>−</kbd>).</li>
+    </ol>
+    <p>No sound on iPhone? Turn off silent mode. Long-press the scarecrow to change your Scarecrow's Song.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="rotate">Turn your phone sideways for the full songbook.</div>
+  <div class="stage" id="stage">
+    <div class="parchment">
+      <svg viewBox="0 0 1000 275" id="staff" role="img" aria-label="Staff showing the notes of the selected song">
+        <rect x="6" y="6" width="988" height="263" rx="6" fill="url(#parchGrad)" filter="url(#paper)"/>
+        <rect x="18" y="18" width="964" height="239" fill="none" stroke="#8a6f48" stroke-width="3"/>
+        <rect x="26" y="26" width="948" height="223" fill="none" stroke="#8a6f48" stroke-width="1" opacity=".6"/>
+        <g id="corners" fill="none" stroke="#8a6f48" stroke-width="3" stroke-linecap="round"></g>
+        <g id="lines" stroke="#8f7b5a" stroke-width="2"></g>
+        <text x="138" y="208" font-size="128" fill="#7a6545" style="font-family:'Noto Music','Apple Symbols','Segoe UI Symbol',serif" opacity=".9">𝄞</text>
+        <text id="songTitle" class="title-text" x="500" y="62" text-anchor="middle" font-size="34">Ocarina Songbook</text>
+        <g id="notes"></g>
+        <text id="songHint" class="hint-text" x="560" y="170" text-anchor="middle" font-size="22">Tap a song to play it</text>
+      </svg>
+    </div>
+  </div>
+</main>
+
+<div class="scrim" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="sheet">
+    <h2 id="edTitle">Your Scarecrow's Song</h2>
+    <p>Enter the 8 notes you taught the scarecrow at Lake Hylia. Use at least two different notes.</p>
+    <div class="slots" id="slots"></div>
+    <div class="keys" id="keys"></div>
+    <div class="row">
+      <button class="btn" id="edBack" type="button">Delete last</button>
+      <button class="btn" id="edClear" type="button">Clear</button>
+      <button class="btn" id="edPlay" type="button">Play</button>
+      <span class="spacer"></span>
+      <button class="btn" id="edCancel" type="button">Cancel</button>
+      <button class="btn primary" id="edSave" type="button">Save</button>
+    </div>
+    <div class="err" id="edErr" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Notes: Switch 2 button → pitch (original OoT ocarina) ----------
+  const NOTE = {
+    L: { f: 293.66, pos: 4.5, shape: 'pill', old: 'A' },   // D4
+    R: { f: 349.23, pos: 3.5, shape: 'pill', old: '▼' },   // F4
+    A: { f: 440.00, pos: 2.5, shape: 'round', old: '▶' },  // A4
+    Y: { f: 493.88, pos: 2,   shape: 'round', old: '◀' },  // B4
+    X: { f: 587.33, pos: 1,   shape: 'round', old: '▲' },  // D5
+  };
+  const KEY_ORDER = ['L', 'R', 'Y', 'X', 'A'];
+
+  // ---------- Icons (own drawings, viewBox -50..50) ----------
+  const CREAM = '#ecdcb5', DARK = '#0b1419';
+  const spiral = () => {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 4.3; t += 0.12) {
+      const r = 3 + 3.1 * t, x = r * Math.cos(t), y = r * Math.sin(t);
+      d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    return d;
+  };
+  const rot = (n, fn) => Array.from({ length: n }, (_, i) => fn(i * 360 / n, i)).join('');
+  const ICON = {
+    zelda: `<g fill="${CREAM}"><path d="M0 -32 L18 -1 L-18 -1Z"/><path d="M-19 1 L-1 32 L-37 32Z"/><path d="M19 1 L37 32 L1 32Z"/></g>`,
+    epona: `<g fill="${CREAM}"><path d="M20 42 C16 24 22 8 26 -2 C28 -14 26 -24 20 -30 L24 -42 L14 -33 L8 -42 L4 -28 C-8 -26 -18 -14 -28 0 C-36 10 -36 20 -28 22 C-20 24 -12 18 -6 16 C-8 26 -10 34 -12 42 Z"/><path d="M26 -2 C32 -12 34 -24 26 -34 C36 -26 38 -10 30 4 Z"/></g><circle cx="-2" cy="-10" r="3.2" fill="${DARK}"/>`,
+    saria: `<g fill="${CREAM}"><ellipse cx="-14" cy="-16" rx="9" ry="20" transform="rotate(-38 -14 -16)"/><ellipse cx="14" cy="-16" rx="9" ry="20" transform="rotate(38 14 -16)"/><ellipse cx="-12" cy="16" rx="6" ry="13" transform="rotate(-142 -12 16)"/><ellipse cx="12" cy="16" rx="6" ry="13" transform="rotate(142 12 16)"/></g><circle r="11" fill="#fff8e6"/><circle r="6" fill="${CREAM}"/>`,
+    sun: `<g fill="${CREAM}"><circle cx="0" cy="-2" r="12"/>${[-165,-140,-115,-90,-65,-40,-15].map(a => `<path d="M-3.5 -19 L0 -34 L3.5 -19Z" transform="translate(0 -2) rotate(${a + 90})"/>`).join('')}<path d="M-38 34 A38 22 0 0 1 38 34 Z"/></g><path d="M-38 34 A38 22 0 0 1 38 34" fill="none" stroke="${DARK}" stroke-width="0"/>`,
+    time: `<g fill="${CREAM}"><path d="M0 -30 L16 0 L0 30 L-16 0Z"/><path d="M-21 -20 Q-42 0 -21 20 Q-31 0 -21 -20Z"/><path d="M21 -20 Q42 0 21 20 Q31 0 21 -20Z"/><circle cx="0" cy="-38" r="4.5"/><circle cx="0" cy="38" r="4.5"/></g><path d="M0 -15 L8 0 L0 15 L-8 0Z" fill="${DARK}"/>`,
+    storms: `<path d="${spiral()}" fill="none" stroke="${CREAM}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+    scarecrow: `<g fill="${CREAM}"><path d="M-12 -24 L0 -42 L12 -24Z"/><rect x="-21" y="-26" width="42" height="5" rx="2.5"/><circle cx="0" cy="-13" r="9"/><path d="M-10 -2 L10 -2 L8 20 L-8 20Z"/></g><g stroke="${CREAM}" stroke-width="5" stroke-linecap="round" fill="none"><path d="M-36 2 Q0 -8 36 2"/><path d="M0 20 L0 44"/></g><g fill="${DARK}"><circle cx="-3.5" cy="-14" r="1.8"/><circle cx="3.5" cy="-14" r="1.8"/></g>`,
+    minuet: `<g fill="#4fb04a" filter="url(#speckle)">${rot(3, a => `<path d="M2 -4 C8 -22 24 -32 36 -22 C22 -22 12 -14 8 4 Z" transform="rotate(${a})"/>`)}<circle r="7"/></g>`,
+    bolero: `<g fill="#d8452c" filter="url(#speckle)"><path d="M2 -40 C12 -24 30 -12 28 10 C26 30 12 40 0 40 C-16 40 -30 28 -28 8 C-26 -8 -14 -12 -12 -26 C-4 -18 4 -14 2 -40 Z"/></g><path d="M0 -4 C6 6 12 12 10 22 C8 30 2 33 -2 33 C-10 33 -14 26 -12 18 C-10 10 -4 8 0 -4Z" fill="${DARK}" opacity=".55"/>`,
+    serenade: `<g fill="#3b7fd6" filter="url(#speckle)">${rot(6, a => `<ellipse cx="0" cy="-22" rx="9" ry="15" transform="rotate(${a})"/>`)}<circle r="9"/></g><circle r="4.5" fill="${DARK}" opacity=".5"/>`,
+    requiem: `<g fill="#e88a2a" filter="url(#speckle)"><path d="M0 -34 A34 34 0 0 1 0 34 A17 17 0 0 1 0 0 A17 17 0 0 0 0 -34Z"/><path d="M-6 30 A31 31 0 0 1 -6 -30" fill="none" stroke="#e88a2a" stroke-width="6" stroke-linecap="round"/></g><circle cx="0" cy="-17" r="4.5" fill="${DARK}" opacity=".6"/>`,
+    nocturne: `<g filter="url(#speckle)"><path d="M-28 -18 L28 -18 L0 30Z" fill="none" stroke="#9a5ad1" stroke-width="6" stroke-linejoin="round"/><g fill="#9a5ad1"><circle cx="-28" cy="-18" r="9"/><circle cx="28" cy="-18" r="9"/><circle cx="0" cy="30" r="9"/><circle cx="0" cy="-2" r="6"/></g></g>`,
+    prelude: `<g fill="#f0cc3a" filter="url(#speckle)">${rot(6, (a, i) => i % 2 === 0
+      ? `<path d="M0 -38 L9 -22 L-9 -22Z" transform="rotate(${a})"/>`
+      : `<circle cx="0" cy="-29" r="7" transform="rotate(${a})"/>`)}<circle r="9"/></g><circle r="4" fill="${DARK}" opacity=".5"/>`,
+  };
+
+  // ---------- Songs (order: top row = story songs + Scarecrow, bottom row = warp songs) ----------
+  // Rhythm: each token is note + length in frames at 60 fps, taken from the original game's
+  // song table (zeldaret/oot decompilation, sOcarinaSongNotes). "-n" is a short rest.
+  const SONGS = [
+    { id: 'zelda',    name: "Zelda's Lullaby",    seq: 'Y51 X25 A78 Y51 X25 A100' },
+    { id: 'epona',    name: "Epona's Song",       seq: 'X18 Y18 A72 X18 Y18 A144' },
+    { id: 'saria',    name: "Saria's Song",       seq: 'R17 A17 Y34 R17 A17 Y136' },
+    { id: 'sun',      name: "Sun's Song",         seq: 'A12 R13 X29 -9 A12 R13 X120' },
+    { id: 'time',     name: 'Song of Time',       seq: 'A32 L65 R33 A32 L65 R99' },
+    { id: 'storms',   name: 'Song of Storms',     seq: 'L11 R11 X45 L11 R11 X90' },
+    { id: 'scarecrow',name: "Scarecrow's Song",   seq: null },
+    { id: 'minuet',   name: 'Minuet of Forest',   seq: 'L18 X18 Y72 A18 Y18 A144' },
+    { id: 'bolero',   name: 'Bolero of Fire',     seq: 'R15 L15 R15 L15 A15 R15 A15 R135' },
+    { id: 'serenade', name: 'Serenade of Water',  seq: 'L36 R36 A33 -3 A36 Y144' },
+    { id: 'requiem',  name: 'Requiem of Spirit',  seq: 'L45 R23 L22 A45 R45 L180' },
+    { id: 'nocturne', name: 'Nocturne of Shadow', seq: 'Y36 A33 -3 A18 L18 Y18 A18 R144' },
+    { id: 'prelude',  name: 'Prelude of Light',   seq: 'X15 A45 X15 A15 Y15 X60' },
+  ];
+  // The game's table holds the final note very long (it fades under the staff animation).
+  // We shorten it to the longest earlier note (at least 40 frames) and let it fade out.
+  const parseSeq = s => {
+    const ev = s.split(' ').map(t => ({ k: t[0] === '-' ? null : t[0], frames: +t.slice(1) }));
+    const last = ev[ev.length - 1];
+    const prevMax = Math.max(...ev.slice(0, -1).filter(e => e.k).map(e => e.frames));
+    last.frames = Math.max(40, Math.min(last.frames, prevMax));
+    last.final = true;
+    return ev;
+  };
+  SONGS.forEach(s => { if (s.seq) { s.events = parseSeq(s.seq); s.notes = s.events.filter(e => e.k).map(e => e.k).join(''); } });
+  // Scarecrow: the game keeps your own timing; we use an even beat with a held last note.
+  const scareEvents = notes => notes.split('').map((k, i, a) => ({ k, frames: i === a.length - 1 ? 40 : 24, final: i === a.length - 1 }));
+  // Positions in % of the stage (x of width, y of height)
+  const POS = [];
+  for (let i = 0; i < 7; i++) { const x = 14 + i * 12; POS.push([x, 15 + 11 * ((x - 50) / 36) ** 2]); }
+  for (let i = 0; i < 6; i++) { const x = 20 + i * 12; POS.push([x, 40 + 6 * ((x - 50) / 30) ** 2]); }
+
+  // ---------- Storage (best effort) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('ocarina.' + k); return v == null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('ocarina.' + k, v); } catch {} },
+  };
+  const validScare = s => typeof s === 'string' && /^[LRAYX]{8}$/.test(s) && new Set(s).size >= 2;
+  let scarecrow = store.get('scarecrow', '');
+  if (!validScare(scarecrow)) scarecrow = '';
+  let speed = store.get('speed', 'normal') === 'slow' ? 'slow' : 'normal';
+  let tone = store.get('tone', 'ocarina') === 'pure' ? 'pure' : 'ocarina';
+  const notesOf = s => s.id === 'scarecrow' ? scarecrow : s.notes;
+
+  // ---------- Build the stage ----------
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const stage = document.getElementById('stage');
+  const buttons = {};
+  let badge = null;
+  SONGS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'song';
+    b.style.left = POS[i][0] + '%';
+    b.style.top = POS[i][1] * 100 / 100 + '%';
+    b.setAttribute('aria-label', s.name);
+    // Original song icons (icons/<id>.png); the drawn SVG stays as fallback if an image fails to load.
+    b.innerHTML = `<img src="icons/${s.id}.png" alt="" draggable="false">`;
+    b.querySelector('img').addEventListener('error', () => {
+      b.innerHTML = `<svg viewBox="-50 -50 100 100" aria-hidden="true">${ICON[s.id]}</svg>`;
+    }, { once: true });
+    b.addEventListener('click', () => onSong(s));
+    stage.appendChild(b);
+    buttons[s.id] = b;
+    if (s.id === 'scarecrow') {
+      // long press opens the editor
+      let t = null;
+      b.addEventListener('pointerdown', () => { t = setTimeout(() => { t = null; b.dataset.lp = '1'; openEditor(); }, 550); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { if (t) clearTimeout(t); t = null; }));
+      b.addEventListener('contextmenu', e => e.preventDefault());
+      badge = document.createElement('button');
+      badge.type = 'button';
+      badge.className = 'edit-badge';
+      badge.setAttribute('aria-label', "Edit Scarecrow's Song");
+      badge.style.left = (POS[i][0] + 3.6) + '%';
+      badge.style.top = (POS[i][1] + 6.6) + '%';
+      badge.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="currentColor"/></svg>`;
+      badge.addEventListener('click', openEditor);
+      stage.appendChild(badge);
+    }
+  });
+  const refreshScare = () => buttons.scarecrow.classList.toggle('is-empty', !scarecrow);
+  refreshScare();
+
+  // Staff: lines, corners
+  const lines = document.getElementById('lines');
+  for (let i = 0; i < 5; i++) {
+    const y = 100 + 26 * i;
+    const l = document.createElementNS(SVGNS, 'line');
+    l.setAttribute('x1', 120); l.setAttribute('x2', 900); l.setAttribute('y1', y); l.setAttribute('y2', y);
+    lines.appendChild(l);
+  }
+  const curl = 'M0 30 C0 10 10 0 30 0 M8 30 C8 18 14 10 24 10 C30 10 32 18 26 20';
+  document.getElementById('corners').innerHTML = [
+    [32, 32, 1, 1], [968, 32, -1, 1], [32, 243, 1, -1], [968, 243, -1, -1],
+  ].map(([x, y, sx, sy]) => `<path d="${curl}" transform="translate(${x} ${y}) scale(${sx} ${sy})"/>`).join('');
+
+  const notesG = document.getElementById('notes');
+  const titleEl = document.getElementById('songTitle');
+  const hintEl = document.getElementById('songHint');
+  const noteY = k => 100 + 26 * (NOTE[k].pos - 1) + 0;
+  function noteGlyph(k, x, animate) {
+    const n = NOTE[k];
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('transform', `translate(${x} ${noteY(k)})`);
+    const fill = n.shape === 'pill' ? '#3d3a35' : '#27395f';
+    const shape = n.shape === 'pill'
+      ? `<rect x="-20" y="-13" width="40" height="26" rx="13" fill="${fill}"/>`
+      : `<circle r="14" fill="${fill}"/>`;
+    g.innerHTML = `<g class="${animate ? 'note-pop' : ''}">${shape}<text y="6.5" text-anchor="middle" font-size="18" font-weight="700" fill="#f3ead2" style="font-family:var(--body)">${k}</text></g>`;
+    notesG.appendChild(g);
+  }
+  const noteX = (i, total) => {
+    const step = total > 6 ? 82 : 96;
+    return 300 + i * step;
+  };
+  function showSong(s, notes, filled) {
+    titleEl.textContent = s.name;
+    notesG.textContent = '';
+    hintEl.textContent = '';
+    if (filled) notes.split('').forEach((k, i) => noteGlyph(k, noteX(i, notes.length), false));
+  }
+
+  // ---------- Audio ----------
+  let ctx = null, noiseBuf = null, bus = null, timers = [], playingId = null;
+  function ensureAudio() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    requestWake();
+  }
+  function voice(out, f, t0, dur, fade) {
+    const pure = tone === 'pure';
+    const peak = pure ? 0.5 : 0.42;
+    const rel = fade ? Math.min(0.35, dur * 0.5) : 0.06;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t0);
+    env.gain.linearRampToValueAtTime(peak, t0 + 0.03);
+    env.gain.setValueAtTime(peak, t0 + dur - rel);
+    env.gain.linearRampToValueAtTime(0, t0 + dur);
+    env.connect(out);
+    const end = t0 + dur + 0.03;
+    const o = ctx.createOscillator();
+    o.type = 'sine'; o.frequency.value = f; o.connect(env); o.start(t0); o.stop(end);
+    if (pure) return;
+    const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = 'triangle'; o2.frequency.value = f; g2.gain.value = 0.15;
+    o2.connect(g2); g2.connect(env); o2.start(t0); o2.stop(end);
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = 5.3;
+    lg.gain.setValueAtTime(0, t0);
+    lg.gain.linearRampToValueAtTime(f * 0.005, t0 + Math.min(0.25, dur * 0.6));
+    lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    lfo.start(t0); lfo.stop(end);
+    const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    n.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 1.2;
+    ng.gain.setValueAtTime(0, t0);
+    ng.gain.linearRampToValueAtTime(0.05, t0 + 0.02);
+    ng.gain.linearRampToValueAtTime(0.015, t0 + 0.12);
+    ng.gain.setValueAtTime(0.015, t0 + dur - 0.06);
+    ng.gain.linearRampToValueAtTime(0, t0 + dur);
+    n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t0, Math.random()); n.stop(end);
+  }
+  const SPEED = { normal: 1, slow: 1.5 };
+  function newBus() {
+    const b = ctx.createGain(); b.gain.value = 1; b.connect(ctx.destination); return b;
+  }
+  function silence() {
+    timers.forEach(clearTimeout); timers = [];
+    if (bus && ctx) {
+      const b = bus, t = ctx.currentTime;
+      b.gain.cancelScheduledValues(t); b.gain.setValueAtTime(b.gain.value, t); b.gain.linearRampToValueAtTime(0, t + 0.03);
+      setTimeout(() => { try { b.disconnect(); } catch {} }, 80);
+    }
+    bus = null;
+  }
+  function playNotes(events, onNote, onDone) {
+    ensureAudio();
+    silence();
+    bus = newBus();
+    const sec = SPEED[speed] / 60;
+    let t = ctx.currentTime + 0.08, idx = 0;
+    events.forEach(e => {
+      const len = e.frames * sec;
+      if (e.k) {
+        const i = idx++, k = e.k, start = t;
+        // small articulation so neighbouring notes stay separate for the mic
+        voice(bus, NOTE[k].f, start, Math.max(0.08, len - 0.02), e.final);
+        if (onNote) timers.push(setTimeout(() => onNote(k, i), (start - ctx.currentTime) * 1000));
+      }
+      t += len;
+    });
+    timers.push(setTimeout(() => { bus = null; onDone && onDone(); }, (t - ctx.currentTime) * 1000 + 60));
+  }
+
+  // ---------- Song taps ----------
+  function setActive(id) {
+    Object.entries(buttons).forEach(([k, b]) => {
+      b.classList.toggle('is-active', k === id);
+      b.classList.toggle('is-playing', k === id && playingId === id);
+      b.classList.toggle('is-dim', !!playingId && k !== id);
+    });
+  }
+  function stopSong() {
+    const id = playingId;
+    silence();
+    playingId = null;
+    setActive(id);
+  }
+  function onSong(s) {
+    const b = buttons[s.id];
+    if (b.dataset.lp) { delete b.dataset.lp; return; }
+    if (playingId) { if (playingId === s.id) stopSong(); return; }
+    const notes = notesOf(s);
+    if (!notes) { openEditor(); return; }
+    playingId = s.id;
+    setActive(s.id);
+    showSong(s, notes, false);
+    playNotes(s.events || scareEvents(notes),
+      (k, i) => noteGlyph(k, noteX(i, notes.length), true),
+      () => { playingId = null; setActive(s.id); });
+  }
+
+  // ---------- Settings ----------
+  const speedChip = document.getElementById('speedChip');
+  const toneChip = document.getElementById('toneChip');
+  const helpChip = document.getElementById('helpChip');
+  const help = document.getElementById('help');
+  const paintChips = () => {
+    speedChip.querySelector('b').textContent = speed === 'slow' ? 'Slow' : 'Normal';
+    toneChip.querySelector('b').textContent = tone === 'pure' ? 'Pure' : 'Ocarina';
+  };
+  paintChips();
+  speedChip.addEventListener('click', () => { speed = speed === 'slow' ? 'normal' : 'slow'; store.set('speed', speed); paintChips(); });
+  toneChip.addEventListener('click', () => { tone = tone === 'pure' ? 'ocarina' : 'pure'; store.set('tone', tone); paintChips(); });
+  helpChip.addEventListener('click', () => { help.hidden = !help.hidden; helpChip.setAttribute('aria-expanded', String(!help.hidden)); });
+  document.addEventListener('click', e => {
+    if (!help.hidden && !help.contains(e.target) && e.target !== helpChip) { help.hidden = true; helpChip.setAttribute('aria-expanded', 'false'); }
+  });
+
+  // ---------- Scarecrow editor ----------
+  const editor = document.getElementById('editor');
+  const slots = document.getElementById('slots');
+  const keys = document.getElementById('keys');
+  const edErr = document.getElementById('edErr');
+  const edSave = document.getElementById('edSave');
+  let draft = '';
+  for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'slot'; slots.appendChild(d); }
+  KEY_ORDER.forEach(k => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'key'; b.dataset.shape = NOTE[k].shape;
+    b.setAttribute('aria-label', `Note ${k}`);
+    b.innerHTML = `${k}<small>${NOTE[k].old}</small>`;
+    b.addEventListener('click', () => {
+      if (draft.length >= 8) return;
+      draft += k; paintDraft();
+      ensureAudio(); const out = newBus(); voice(out, NOTE[k].f, ctx.currentTime + 0.01, 0.3);
+    });
+    keys.appendChild(b);
+  });
+  function paintDraft() {
+    [...slots.children].forEach((d, i) => { d.textContent = draft[i] || ''; d.classList.toggle('filled', !!draft[i]); });
+    const full = draft.length === 8;
+    edSave.disabled = !validScare(draft);
+    edErr.textContent = full && new Set(draft).size < 2 ? 'Use at least two different notes. The game does not accept a song with only one.' : '';
+  }
+  function openEditor() {
+    if (playingId) stopSong();
+    draft = scarecrow; paintDraft();
+    editor.hidden = false;
+    keys.querySelector('button').focus();
+  }
+  function closeEditor() { silence(); editor.hidden = true; buttons.scarecrow.focus(); }
+  document.getElementById('edBack').addEventListener('click', () => { draft = draft.slice(0, -1); paintDraft(); });
+  document.getElementById('edClear').addEventListener('click', () => { draft = ''; paintDraft(); });
+  document.getElementById('edPlay').addEventListener('click', () => { if (draft) playNotes(scareEvents(draft)); });
+  document.getElementById('edCancel').addEventListener('click', closeEditor);
+  edSave.addEventListener('click', () => {
+    if (!validScare(draft)) return;
+    scarecrow = draft; store.set('scarecrow', scarecrow); refreshScare(); closeEditor();
+    const s = SONGS.find(x => x.id === 'scarecrow');
+    setActive('scarecrow'); showSong(s, scarecrow, true);
+  });
+  editor.addEventListener('click', e => { if (e.target === editor) closeEditor(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !editor.hidden) closeEditor(); });
+
+  // ---------- Keep the screen awake while in use ----------
+  let wake = null;
+  async function requestWake() {
+    if (wake || !('wakeLock' in navigator)) return;
+    try { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } catch {}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ctx) requestWake(); });
+
+  // Start state: Zelda's Lullaby selected and its notes on the staff, ready to tap
+  setActive('zelda');
+  showSong(SONGS[0], SONGS[0].notes, true);
+  hintEl.textContent = '';
+})();
+</script>
